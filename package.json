@@ -1,0 +1,26 @@
+{
+  "name": "Rewards",
+  "version": "1.0.0",
+  "description": "",
+  "main": "/src/app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DAT210/Rewards.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DAT210/Rewards/issues"
+  },
+  "homepage": "https://github.com/DAT210/Rewards#readme",
+  "dependencies": {
+    "express": "^4.16.3",
+    "nunjucks": "^3.1.3",
+    "socket.io": "^2.1.1",
+    "superagent": "^4.0.0-beta.5"
+  }
+}

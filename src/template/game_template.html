@@ -1,0 +1,32 @@
+{% extends "template/template.html" %}
+{% block content %}
+<div id="game">
+    <div id="gameHeader">
+        <div id="userInfo" class="gameHeaderBlock">
+            <p class="stroke">User id: 213587</p>
+        </div>
+        <div id="gameInfo" class="gameHeaderBlock">
+            <div id="gameTitle"><h1 class="stroke">Memory Game</h1></div>
+            <div id="gameTimeLeft"></div>
+        </div>
+        <div id="PointsInfo" class="gameHeaderBlock">
+            <p id="minPoints"></p>
+            <p id="maxPoints"></p>
+            <p id="currentPoints"></p>
+        </div>
+    </div>
+    <div id="gameMenu">
+        <form id="settings" action="">
+            <div class="slidecontainer">
+                <label for="tokenSlider">Tokens to use</label>
+                <input type="range" min="0" max="4" value="1" class="slider" id="tokenSlider"><br>
+                <label id="boardSizeLabel"></label><br>
+                <label id="minPointsLabel"></label><br>
+                <label id="maxPointsLabel"></label><br>
+                <input id="btn_start" type="button" value="Start">
+            </div>
+        </form>
+    </div>
+    <div id="gameFooter"></div>
+</div>
+{% endblock %}

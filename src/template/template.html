@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+	<head>
+		<title>{% block title %} Our Restaurant {% endblock %}</title>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<!--===============================================================================================-->
+		<link href="https://fonts.googleapis.com/?family=Montserrat:400,700" rel="stylesheet">
+		<!--===============================================================================================-->
+		<link rel="icon" type="image/png" href="/images/icons/favicon.png" />
+		<!--===============================================================================================-->
+		<!--[htmlclean-protect]-->
+		<!-- inject: -->
+		<!-- endinject -->
+		<!--[/htmlclean-protect]-->
+		<link rel="stylesheet" href="/css/main.css">
+		<link rel="stylesheet" href="/css/util.css">
+		<link rel="stylesheet" href="/css/game.css">
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script>
+		<script src="/js/gameUpdater.js"></script>
+	</head>
+
+	<body>
+
+		<!-- Header -->
+	 	{% include "template/header.njk" %}
+		<!-- Sidebar -->
+		{% include "template/sidebar.njk" %}
+
+		{% block content %} {% endblock %}
+
+		<!-- Footer -->
+		{% include "template/footer.njk" %}
+		<!-- Back to top -->
+		{% include "template/backtotop.njk" %}
+		<!-- Container Selection1 -->
+
+	</body>
+</html>
