@@ -239,30 +239,28 @@ function getAvailableTokens(user){
 	}
 	*/
 	superAgent
-		.get("/reward-pages/:" + user.userID + "?page=tokens")
+		.get("localhost:32100/reward-pages/" + user.userID + "?page=tokens")
 		.then(res => {
-			if(res){
-				let json = JSON.parse(res.text);
-				date = json.GameTime;
-				date = date.split("-");
-				userDate = new Date();
-				userDate.setDate(date[0]);
-				userDate.setMonth(date[1]);
-				userDate.setFullYear(date[2]);
-				currentDate = new Date();
-				if(userDate.getTime() > currentDate.getTime()){
-					return {
-						"tokens": json.Tokens,
-						"timer": false,
-						"serverAvailable": true
-					}
-				}else{
-					return {
-						"tokens": 0,
-						"timer": true,
-						"serverAvailable": true
-					};
+			let json = JSON.parse(res.text);
+			date = json.GameTime;
+			date = date.split("-");
+			userDate = new Date();
+			userDate.setDate(date[0]);
+			userDate.setMonth(date[1]);
+			userDate.setFullYear(date[2]);
+			currentDate = new Date();
+			if(userDate.getTime() > currentDate.getTime()){
+				return {
+					"tokens": json.Tokens,
+					"timer": false,
+					"serverAvailable": true
 				}
+			}else{
+				return {
+					"tokens": 0,
+					"timer": true,
+					"serverAvailable": true
+				};
 			}
 		})
 		.catch(err => {
@@ -299,7 +297,7 @@ function removeTokensFromUser(user){
 		"GameTime": gameTime
 	}
 	superAgent
-		.get()
+		.get("localhost:32100/subTokens")
 		.then(res => {
 			if(res){
 				return true;
