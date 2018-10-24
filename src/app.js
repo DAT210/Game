@@ -296,6 +296,7 @@ function removeTokensFromUser(user){
 		"Tokens": tokens,
 		"GameTime": gameTime
 	}
+	
 	superAgent
 		.get("localhost:32100/subTokens")
 		.then(res => {
