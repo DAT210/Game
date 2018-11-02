@@ -22,12 +22,13 @@ socket.on("settingsResponse", function(serverSettings){
 });
 
 socket.on("startGameRespons", function(clientBoard){
-  clearMenu();
-  addGameHeader();
-  addGameContent(clientBoard);
-  $("#minPoints").html("<p id=\"minPoints\">Min points you can earn: " + settings.minPoints + " </p>");
-  $("#maxPoints").html("<p id=\"maxPoints\">Max points you can earn: " + settings.maxPoints + "</p>");
-  $("#currentPoints").html("<p id=\"currentPoints\">Current points: </p>");
+  if(clientBoard.length != 0){
+    clearMenu();
+    addGameContent(clientBoard);
+    $("#minPoints").html("<p id=\"minPoints\">Min points you can earn: " + settings.minPoints + " </p>");
+    $("#maxPoints").html("<p id=\"maxPoints\">Max points you can earn: " + settings.maxPoints + "</p>");
+    $("#currentPoints").html("<p id=\"currentPoints\">Current points: </p>");
+  }
 });
 
 socket.on("updateBoard", function(clientBoard){
@@ -69,7 +70,6 @@ function updateBoard(clientBoard){
       }else{
         continue;
       }
-      //$("#" + y + "-" + x).html("Value: " + value);
     }
   }
 }
@@ -77,16 +77,12 @@ function updateBoard(clientBoard){
 function addStartMenuEvents(){
   $("#btn_start").click(function() {
     socket.emit("startGameRequest", $("#tokenSlider").val());
-    //socket.emit("startGameRequest", setting.boardsize[0]);
   });
 
   $("#tokenSlider").on("change", function(){
     var tokens = $("#tokenSlider").val();
     socket.emit("settingsRequest", tokens);
   });
-}
-
-function addGameHeader(){
 }
 
 function addGameContent(clientBoard){
@@ -134,6 +130,7 @@ function clearMenu(){
 }
 
 $(document).ready(function () {
+  socket.emit("firstConnection");
   socket.emit("settingsRequest", "1");
 
   addStartMenuEvents();
