@@ -5,14 +5,14 @@ var nunjucks = require("nunjucks");
 var path = require("path");
 var superAgent = require("superagent");
 var logger = require('./logger/logger.js').getLogger();
-const env = require('./server/environment.js')
+const env = require('./tools/environment.js')
 if (!env.load()) { return; };
 if (!env.validate()) { return; };
 var cookie = require("cookie");
 var argv = handleCommandLineArguments();
 var app = express();
 var server = app.listen(process.env.PORT, function(){
-	console.log(`Game server listening on localhost:${process.env.PORT}!\nUse ctrl + c to stop the server!`);
+	logger.info(`Game server listening on localhost:${process.env.PORT}!\nUse ctrl + c to stop the server!`);
 });
 var io = require("socket.io").listen(server);
 
@@ -75,7 +75,7 @@ nunjucks.configure(__dirname, {
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/reward/game", function(req, res){
-	res.render("template/game_template.html");
+	res.render("template/game_template.html", {Port: process.env.PORT});
 });
 
 io.on("connection", function(socket){
@@ -100,14 +100,14 @@ io.on("connection", function(socket){
 		user.serverAvailable = usersetup.serverAvailable;
 		user.playInDays = usersetup.playInDays;
 
-		console.log("User connected with socketID: " + user.socketID + "\nUser have userID: " + user.userID + "\nAvailable tokens: " + user.availableTokens + "\n");
+		logger.info("User connected with socketID: " + user.socketID + "\nUser have userID: " + user.userID + "\nAvailable tokens: " + user.availableTokens + "\n");
 	});
 
 	socket.on("settingsRequest", function(tokens){
         try {
 			tokens = parseInt(tokens);
 		} catch (error) {
-			logger.error("User ", socket.id, "got this error while getting settings information: ", error);
+			logger.info("User " + socket.id + "got this error while getting settings information: " + error);
 			tokens = 0;
 		}
 		var clientSettings = {};
@@ -155,7 +155,7 @@ io.on("connection", function(socket){
 			try {
 				tokens = parseInt(tokens);
 			} catch (error) {
-				logger.error("User ", socket.id, "got this error while starting the game: ", error);
+				logger.info("User " + socket.id + "got this error while starting the game: " + error);
 			}
 			user.boards = new Board(parseInt(settings.boardSize[tokens][0]));
 			user.numberOfCardSetsLeft = Math.floor(user.boards.boardSize * user.boards.boardSize / 2);
@@ -167,7 +167,7 @@ io.on("connection", function(socket){
 			user.penaltyMoves = false;
 	
 			socket.emit("startGameRespons", user.getClientBoard());
-			logger.info("Client connected and started the game with session id:", socket.id);
+			logger.info("Client connected and started the game with session id:" + user.socketID);
 	
 			user.timeLeft = settings.startTime[user.tokensUsed];
 			socket.emit("startTimer", user.timeLeft);
@@ -214,7 +214,7 @@ io.on("connection", function(socket){
 	
 				socket.emit("updateBoard", user.getClientBoard());
 				user.movesUsed += 1;
-				logger.info("user with id:", socket.id, " made an move on x:", x, "y:", y);
+				logger.info("user with id:" + user.socketID + " made an move on x:" + x + "y:" + y);
 			}else if(user.secondCard == undefined){
 				user.boards.serverBoard[y][x].frontUp = !user.boards.serverBoard[y][x].frontUp;
 				
@@ -224,7 +224,7 @@ io.on("connection", function(socket){
 				};
 	
 				socket.emit("updateBoard", user.getClientBoard());
-				logger.info("user with id:", socket.id, " made an move on x:", x, "y:", y);
+				logger.info("user with id:" + user.socketID + " made an move on x:" + x + "y:" + y);
 
 				setTimeout(function(user){	
 					firstCard = user.firstCard;
@@ -259,12 +259,13 @@ io.on("connection", function(socket){
 		if(user.timer){
 			clearInterval(user.timer);
 		}
+		logger.info("User with session id: " + user.socketID + " disconnected");
 		users.delete(user.socketID);
 	});
 });
 
 function getUserId(socket){
-	if (!process.env.ENVIRONMENT == "production") {
+	if (process.env.ENVIRONMENT != "production") {
 		return socket.id;
 	}
 
@@ -283,7 +284,7 @@ function getAvailableTokens(user){
 		nextPlayDate: string	dd-mm-yyyy
 	}
 	*/
-	if(!process.env.ENVIRONMENT == "production") {
+	if(process.env.ENVIRONMENT != "production") {
 		return {
 			"tokens": 10,
 			"playInDays": true,
@@ -347,7 +348,7 @@ function removeTokensFromUser(user){
 		nextPlayDate: string	dd-mm-yyyy
 	}
 	*/
-	if(!process.env.ENVIRONMENT == "production") {
+	if(process.env.ENVIRONMENT != "production") {
 		return;
 	}
 
@@ -395,7 +396,7 @@ function giveCupon(user){
 	}
 	*/
 
-	if (argv.test) {
+	if (process.env.ENVIRONMENT != "production") {
 		return;
 	}
 

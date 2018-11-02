@@ -1,4 +1,4 @@
-var socket = io("http://localhost:3000");
+var socket = io("http://localhost:" + getPort());
 var settings = {
   	"minPoints": 5,
   	"maxPoints": 15,

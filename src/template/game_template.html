@@ -1,5 +1,11 @@
 {% extends "template/template.html" %}
 {% block content %}
+<script>
+    function getPort(){
+        return {{ Port if Port else 0 }};
+    }
+</script>
+<script src="/js/gameUpdater.js"></script>
 <div id="game">
     <div id="gameHeader">
         <div id="userInfo" class="gameHeaderBlock">
