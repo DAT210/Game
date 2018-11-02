@@ -4,15 +4,14 @@ var express = require("express");
 var nunjucks = require("nunjucks");
 var path = require("path");
 var superAgent = require("superagent");
-var logger = require('./tools/logger.js').getLogger();
 const env = require('./tools/environment.js')
 if (!env.load()) { return; };
 if (!env.validate()) { return; };
+var logger = require('./tools/logger.js').getLogger(process.env.ENVIRONMENT);
 var cookie = require("cookie");
-var argv = handleCommandLineArguments();
 var app = express();
 var server = app.listen(process.env.PORT, function(){
-	logger.info(`Game server listening on localhost:${process.env.PORT}!\nUse ctrl + c to stop the server!`);
+	logger.log("info", `Game server listening on localhost:${process.env.PORT}!\nUse ctrl + c to stop the server!`);
 });
 var io = require("socket.io").listen(server);
 
@@ -64,7 +63,6 @@ var settings = {
 	}
 };
 
-
 var users = new Map();
 
 nunjucks.configure(__dirname, {
@@ -85,8 +83,8 @@ io.on("connection", function(socket){
 	
 	socket.on("firstConnection", function(){
 		// TODO handle server down or not allowed to play yet
-		user.userID = getUserId(socket);
-		getTokensResp = getAvailableTokens(user);
+		user.userID = functions.getUserId(socket);
+		getTokensResp = functions.getAvailableTokens(user);
 		user.availableTokens = getTokensResp.tokens;
 		user.serverAvailable = getTokensResp.serverAvailable;
 		user.playInDays = getTokensResp.playInDays;
@@ -107,7 +105,7 @@ io.on("connection", function(socket){
         try {
 			tokens = parseInt(tokens);
 		} catch (error) {
-			logger.info("User " + socket.id + "got this error while getting settings information: " + error);
+			logger.error("User " + socket.id + "got this error while getting settings information: " + error);
 			tokens = 0;
 		}
 		var clientSettings = {};
@@ -155,7 +153,7 @@ io.on("connection", function(socket){
 			try {
 				tokens = parseInt(tokens);
 			} catch (error) {
-				logger.info("User " + socket.id + "got this error while starting the game: " + error);
+				logger.error("User " + socket.id + "got this error while starting the game: " + error);
 			}
 			user.boards = new Board(parseInt(settings.boardSize[tokens][0]));
 			user.numberOfCardSetsLeft = Math.floor(user.boards.boardSize * user.boards.boardSize / 2);
@@ -174,18 +172,18 @@ io.on("connection", function(socket){
 			
 			timer = setInterval(function(){
 				if(user.timeLeft == 0){
-					gameOver(user);
+					functions.gameOver(user);
 				}
 	
 				socket.emit("timerUpdate", user.timeLeft);		
 				user.timeLeft = user.timeLeft - 1;
-				calculateScore(user);
+				functions.calculateScore(user);
 				socket.emit("scoreUpdate", user.currentPoints);
 			}, 1000);
 	
 			user.timer = timer;
 			
-			removeTokensFromUser(user);
+			functions.removeTokensFromUser(user);
 		}else{
 			socket.emit("startGameRespons", []);
 		}
@@ -238,7 +236,7 @@ io.on("connection", function(socket){
 						serverBoard[secondCard.y][secondCard.x].cleared = true;
 						user.numberOfCardSetsLeft -= 1;
 						if(user.numberOfCardSetsLeft == 0){
-							gameOver(user);
+							functions.gameOver(user);
 						}
 					}else{
 						serverBoard[firstCard.y][firstCard.x].frontUp = !serverBoard[firstCard.y][firstCard.x].frontUp;
@@ -264,299 +262,287 @@ io.on("connection", function(socket){
 	});
 });
 
-function getUserId(socket){
-	if (process.env.ENVIRONMENT != "production") {
-		return socket.id;
-	}
-
-	// TODO write stuff to fetch userid
-    //var cookies = cookie.parse(socket.handshake.headers.cookie);
-    //return cookies.userID;
-}
-
-function getAvailableTokens(user){
-	// TODO find how many tokens the user has.
-	/*
-	JSON format from reward server:
-	{
-		UserID: int
-		Tokens: int
-		nextPlayDate: string	dd-mm-yyyy
-	}
-	*/
-	if(process.env.ENVIRONMENT != "production") {
-		return {
-			"tokens": 10,
-			"playInDays": true,
-			"serverAvailable": true
-		};
-	}
-
-	superAgent
-		.get(process.env.GET_AVAILABLE_TOKENS + user.userID + "?page=tokens")
-		.then(res => {
-			let json = JSON.parse(res.text);
-			if(json.nextPlayDate == ""){
-				return {
-					"tokens": parseInt(json.tokens),
-					"playInDays": true,
-					"serverAvailable": true
-				}
-			}
-			date = json.nextPlayDate;
-			date = date.split("-");
-			userDate = new Date();
-			userDate.setDate(date[0]);
-			userDate.setMonth(date[1]);
-			userDate.setFullYear(date[2]);
-			currentDate = new Date();
-			if(userDate.getTime() > currentDate.getTime()){
-				return {
-					"tokens": parseInt(json.tokens),
-					"playInDays": false,
-					"serverAvailable": true
-				}
-			}else{
-				return {
-					"tokens": 0,
-					"playInDays": true,
-					"serverAvailable": true
-				};
-			}
-		})
-		.catch(err => {
-			if(err){
-				logger.info("\nUser with session id: " + user.socketID + 
-					"\nGot this error message when trying to remove tokens:\n" +
-					err + "\nWill try again soon.\n");
-				return {
-					"tokens": 0,
-					"serverAvailable": false,
-					"playInDays": false,
-				};
-			}
-		})
-}
-
-function removeTokensFromUser(user){
-	// TODO send request to reward server to remove tokens from user
-	/*
-	Json format to reward server:
-	{
-		userID: int
-		tokens: int
-		nextPlayDate: string	dd-mm-yyyy
-	}
-	*/
-	if(process.env.ENVIRONMENT != "production") {
-		return;
-	}
-
-	userID = user.userID;
-	tokens = user.tokensUsed;
-	currentTime = new Date();
-	currentTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate());
-	nextPlayDate = currentTime.setDate(currentTime.getDate() + settings.playInDays[user.tokensUsed]);
-
-
-	const http = new XMLHttpRequest();
-	const url = process.env.REMOVE_TOKENS_FROM_USER;
-	http.open('PATCH', url);
-	http.setRequestHeader('Content-type', 'application/json; charset=utf-8');
-	let json = JSON.parse('{}');
-	json.userID = userID;
-	json.tokens = -tokens;
-	json.nextPlayDate = nextPlayDate;
-	http.send(JSON.stringify(json));
-	http.onreadystatechange = function() {
-		if (this.readyState == 4 && this.status == 200) {
-			// TODO add code that will handle if the http patch request succeeds
-		}else if(this.readyState == 4){
-			// TODO add code that will handle if the http patch request fail
+var functions = module.exports = {
+	getUserId: function (socket){
+		if (process.env.ENVIRONMENT != "production") {
+			return socket.id;
 		}
-	}
-}
 
-function gameOver(user){
-	logger.info("Game over for user with userID: " + user.userID);
-	clearInterval(user.timer);
-	calculateScore(user);
-	giveCupon(user);
-	delete user.timer;
-	user.socket.emit("gameOver", user.currentPoints);
-}
+		// TODO write stuff to fetch userid and handle no event if there are no cookies
+		//var cookies = cookie.parse(socket.handshake.headers.cookie);
+		//return cookies.userID;
+	},
 
-function giveCupon(user){
-	/*
-	Json format to reward server:
-	{
-		UserId: int
-		Value: int
-		Type: int
-	}
-	*/
-
-	if (process.env.ENVIRONMENT != "production") {
-		return;
-	}
-
-	userID = user.userID;
-	value = user.currentPoints;
-	type = 0;
-
-	const http = new XMLHttpRequest();
-	const url = process.env.GIVE_COUPON; // TODO add url for cupon server
-	http.open('PATCH', url);
-	http.setRequestHeader('Content-type', 'application/json; charset=utf-8');
-	let json = JSON.parse('{}');
-	json.userID = userID;
-	json.value = value;
-	json.type = type;
-	http.send(JSON.stringify(json));
-	http.onreadystatechange = function() {
-		if (this.readyState == 4 && this.status == 200) {
-			// TODO add code that will handle if the http patch request succeeds
-		}else if(this.readyState == 4){
-			// TODO add code that will handle if the http patch request fail
+	getAvailableTokens: function (user){
+		// TODO find how many tokens the user has.
+		/*
+		JSON format from reward server:
+		{
+			UserID: int
+			Tokens: int
+			nextPlayDate: string	dd-mm-yyyy
 		}
-	}
-}
+		*/
+		if(process.env.ENVIRONMENT != "production") {
+			return {
+				"tokens": 10,
+				"playInDays": true,
+				"serverAvailable": true
+			};
+		}
 
-function calculateScore(user){
-	if(user.timeLeft < Math.floor(settings.startTime[user.tokensUsed] * 0.2) &&
-		!user.penaltyTime){
-		user.currentPoints -= settings.penalty[user.tokensUsed];
-		user.penaltyTime = true;
-	}
-	if(user.movesUsed > settings.allowedMoves[user.boards.boardSize] &&
-		!user.penaltyMoves){
-		user.currentPoints -= settings.penalty[user.tokensUsed];
-		user.penaltyMoves = true;
-	}
-	if(user.timeLeft <= 0){
-		user.currentPoints = settings.minPoints[user.tokensUsed];
-	}
-}
+		superAgent
+			.get(process.env.GET_AVAILABLE_TOKENS + user.userID + "?page=tokens")
+			.then(res => {
+				let json = JSON.parse(res.text);
+				if(json.nextPlayDate == ""){
+					return {
+						"tokens": parseInt(json.tokens),
+						"playInDays": true,
+						"serverAvailable": true
+					}
+				}
+				date = json.nextPlayDate;
+				date = date.split("-");
+				userDate = new Date();
+				userDate.setDate(date[0]);
+				userDate.setMonth(date[1]);
+				userDate.setFullYear(date[2]);
+				currentDate = new Date();
+				if(userDate.getTime() > currentDate.getTime()){
+					return {
+						"tokens": parseInt(json.tokens),
+						"playInDays": false,
+						"serverAvailable": true
+					}
+				}else{
+					return {
+						"tokens": 0,
+						"playInDays": true,
+						"serverAvailable": true
+					};
+				}
+			})
+			.catch(err => {
+				if(err){
+					logger.error("\nUser with session id: " + user.socketID + 
+						"\nGot this error message when trying to remove tokens:\n" +
+						err + "\nWill try again soon.\n");
+					return {
+						"tokens": 0,
+						"serverAvailable": false,
+						"playInDays": false,
+					};
+				}
+			})
+	},
 
-function createAndShuffleBoard(boardSize){
-	var serverBoard = [];
-	var clientBoard = [];
+	removeTokensFromUser: function (user){
+		// TODO send request to reward server to remove tokens from user
+		/*
+		Json format to reward server:
+		{
+			userID: int
+			tokens: int
+			nextPlayDate: string	dd-mm-yyyy
+		}
+		*/
+		if(process.env.ENVIRONMENT != "production") {
+			return;
+		}
 
-  	for (var i = 0; i < boardSize; i++) {
-		serverBoard[i] = [];
-		clientBoard[i] = [];
-  	}
+		userID = user.userID;
+		tokens = user.tokensUsed;
+		currentTime = new Date();
+		currentTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate());
+		nextPlayDate = currentTime.setDate(currentTime.getDate() + settings.playInDays[user.tokensUsed]);
 
-	var middleCardMissing = false;
-	var pastmiddlecard = false;
-	var numberOfCardSets = boardSize * boardSize;
-	var pastvalue = 0;
-	if(numberOfCardSets % 2 != 0){
-		middleCardMissing = true;
-	}
 
-	for(var y = 0; y < boardSize; y++){
-		for(var x = 0; x < boardSize; x++){
-			if(middleCardMissing && (Math.floor(boardSize / 2) == x && Math.floor(boardSize / 2) == y)){
-				serverBoard[y][x] = undefined;
-				clientBoard[y][x] = undefined;
-				pastmiddlecard = true;
-				pastvalue = parseInt(((y*boardSize) + x) / 2);
+		const http = new XMLHttpRequest();
+		const url = process.env.REMOVE_TOKENS_FROM_USER;
+		http.open('PATCH', url);
+		http.setRequestHeader('Content-type', 'application/json; charset=utf-8');
+		let json = JSON.parse('{}');
+		json.userID = userID;
+		json.tokens = -tokens;
+		json.nextPlayDate = nextPlayDate;
+		http.send(JSON.stringify(json));
+		http.onreadystatechange = function() {
+			if (this.readyState == 4 && this.status == 200) {
+				// TODO add code that will handle if the http patch request succeeds
+			}else if(this.readyState == 4){
+				// TODO add code that will handle if the http patch request fail
+			}
+		}
+	},
+
+	gameOver: function (user){
+		logger.info("Game over for user with userID: " + user.userID);
+		clearInterval(user.timer);
+		functions.calculateScore(user);
+		functions.giveCoupon(user);
+		delete user.timer;
+		user.socket.emit("gameOver", user.currentPoints);
+	},
+
+	giveCoupon: function (user){
+		/*
+		Json format to reward server:
+		{
+			UserId: int
+			Value: int
+			Type: int
+		}
+		*/
+
+		if (process.env.ENVIRONMENT != "production") {
+			return;
+		}
+
+		userID = user.userID;
+		value = user.currentPoints;
+		type = 0;
+
+		const http = new XMLHttpRequest();
+		const url = process.env.GIVE_COUPON; // TODO add url for cupon server
+		http.open('PATCH', url);
+		http.setRequestHeader('Content-type', 'application/json; charset=utf-8');
+		let json = JSON.parse('{}');
+		json.userID = userID;
+		json.value = value;
+		json.type = type;
+		http.send(JSON.stringify(json));
+		http.onreadystatechange = function() {
+			if (this.readyState == 4 && this.status == 200) {
+				// TODO add code that will handle if the http patch request succeeds
+			}else if(this.readyState == 4){
+				// TODO add code that will handle if the http patch request fail
+			}
+		}
+	},
+
+	calculateScore: function (user){
+		if(user.timeLeft < Math.floor(settings.startTime[user.tokensUsed] * 0.2) &&
+			!user.penaltyTime){
+			user.currentPoints -= settings.penalty[user.tokensUsed];
+			user.penaltyTime = true;
+		}
+		if(user.movesUsed > settings.allowedMoves[user.boards.boardSize] &&
+			!user.penaltyMoves){
+			user.currentPoints -= settings.penalty[user.tokensUsed];
+			user.penaltyMoves = true;
+		}
+		if(user.timeLeft <= 0){
+			user.currentPoints = settings.minPoints[user.tokensUsed];
+		}
+	},
+
+	createAndShuffleBoard: function (boardSize){
+		var serverBoard = [];
+		var clientBoard = [];
+
+		for (var i = 0; i < boardSize; i++) {
+			serverBoard[i] = [];
+			clientBoard[i] = [];
+		}
+
+		var middleCardMissing = false;
+		var pastmiddlecard = false;
+		var numberOfCardSets = boardSize * boardSize;
+		var pastvalue = 0;
+		if(numberOfCardSets % 2 != 0){
+			middleCardMissing = true;
+		}
+
+		for(var y = 0; y < boardSize; y++){
+			for(var x = 0; x < boardSize; x++){
+				if(middleCardMissing && (Math.floor(boardSize / 2) == x && Math.floor(boardSize / 2) == y)){
+					serverBoard[y][x] = undefined;
+					clientBoard[y][x] = undefined;
+					pastmiddlecard = true;
+					pastvalue = parseInt(((y*boardSize) + x) / 2);
+					continue;
+				}
+				var value = parseInt(((y*boardSize) + x) / 2);
+				if(pastmiddlecard){
+					value = pastvalue;
+					pastvalue = parseInt(((y*boardSize) + x) / 2);
+				}
+				serverBoard[y][x] = new ServerCard(value);
+				clientBoard[y][x] = new ClientCard(value);
+				numberOfCardSets -= 1;
+			}
+			if(numberOfCardSets <= 0){
+				break;
+			}
+		}
+
+		serverBoard = functions.shuffleServerBoard(serverBoard, boardSize);
+
+		var boards = [];
+		boards[0] = serverBoard;
+		boards[1] = functions.parseServerBoardToClientBoard(serverBoard, clientBoard, boardSize);
+
+		return boards;
+	},
+
+	shuffleServerBoard: function (serverBoard, boardSize){
+		length = boardSize * boardSize;
+		
+		var startPosition = length - 1;
+
+		for(var i = startPosition; i > 0; i--){	
+			j = Math.floor(Math.random() * (i-1));
+
+			i_y = parseInt(i / boardSize);
+			i_x = parseInt(i - i_y * boardSize);
+
+			j_y = parseInt(j / boardSize);
+			j_x = parseInt(j - j_y * boardSize);
+
+			if(serverBoard[j_y][j_x] == undefined || serverBoard[i_y][i_x] == undefined){
 				continue;
 			}
-			var value = parseInt(((y*boardSize) + x) / 2);
-			if(pastmiddlecard){
-				value = pastvalue;
-				pastvalue = parseInt(((y*boardSize) + x) / 2);
+
+			temp = serverBoard[j_y][j_x];
+			serverBoard[j_y][j_x] = serverBoard[i_y][i_x];
+			serverBoard[i_y][i_x] = temp;
+		}
+
+		return serverBoard;
+	},
+
+	parseServerBoardToClientBoard: function (serverBoard, clientBoard, boardSize){
+		var numberOfCardSets = boardSize * boardSize;
+
+		var numberOfCardSetsLeft = numberOfCardSets;
+
+		for(var y = 0; y < boardSize; y++){
+			for(var x = 0; x < boardSize; x++){
+				if(numberOfCardSetsLeft <= 0){
+					break;
+				}
+				if(serverBoard[y][x] == undefined){
+					clientBoard[y][x] = undefined;
+					continue;
+				}
+				clientBoard[y][x].setValue(serverBoard[y][x]);
+				numberOfCardSetsLeft -= 1;
 			}
-			serverBoard[y][x] = new ServerCard(value);
-			clientBoard[y][x] = new ClientCard(value);
-			numberOfCardSets -= 1;
-		}
-		if(numberOfCardSets <= 0){
-			break;
-		}
-	}
-
-	serverBoard = shuffleServerBoard(serverBoard, boardSize);
-
-	var boards = [];
-	boards[0] = serverBoard;
-	boards[1] = parseServerBoardToClientBoard(serverBoard, clientBoard, boardSize);
-
-	return boards;
-}
-
-function shuffleServerBoard(serverBoard, boardSize){
-	length = boardSize * boardSize;
-	
-	var startPosition = length - 1;
-
-	for(var i = startPosition; i > 0; i--){	
-		j = Math.floor(Math.random() * (i-1));
-
-		i_y = parseInt(i / boardSize);
-		i_x = parseInt(i - i_y * boardSize);
-
-		j_y = parseInt(j / boardSize);
-		j_x = parseInt(j - j_y * boardSize);
-
-		if(serverBoard[j_y][j_x] == undefined || serverBoard[i_y][i_x] == undefined){
-			continue;
-		}
-
-		temp = serverBoard[j_y][j_x];
-		serverBoard[j_y][j_x] = serverBoard[i_y][i_x];
-		serverBoard[i_y][i_x] = temp;
-	}
-
-	return serverBoard;
-}
-
-function parseServerBoardToClientBoard(serverBoard, clientBoard, boardSize){
-	var numberOfCardSets = boardSize * boardSize;
-
-	var numberOfCardSetsLeft = numberOfCardSets;
-
-	for(var y = 0; y < boardSize; y++){
-		for(var x = 0; x < boardSize; x++){
 			if(numberOfCardSetsLeft <= 0){
 				break;
 			}
-			if(serverBoard[y][x] == undefined){
-				clientBoard[y][x] = undefined;
-				continue;
-			}
-			clientBoard[y][x].setValue(serverBoard[y][x]);
-			numberOfCardSetsLeft -= 1;
 		}
-		if(numberOfCardSetsLeft <= 0){
-			break;
-		}
+
+		return clientBoard;
 	}
-
-	return clientBoard;
-}
-
-function handleCommandLineArguments() {
-	let argv = require('minimist')(process.argv.slice(2));
-
-
-	if (argv.redirect_console_log) {
-		console.log = function(v) {
-			return;
-		};
-	}
-	
-
-	return argv;
 }
 
 class Board{
     constructor(boardSize){
 		this.boardSize = boardSize;
 
-		var boards = createAndShuffleBoard(boardSize);
+		var boards = functions.createAndShuffleBoard(boardSize);
 		this.serverBoard = boards[0];
 		this.clientBoard = boards[1];
 	}
@@ -641,7 +627,7 @@ class User{
 		*/
 	}
 	getClientBoard(){
-		this.boards.clientBoard = parseServerBoardToClientBoard(this.boards.serverBoard, 
+		this.boards.clientBoard = functions.parseServerBoardToClientBoard(this.boards.serverBoard, 
 											this.boards.clientBoard, 
 											this.boards.boardSize);
 		return this.boards.clientBoard;
