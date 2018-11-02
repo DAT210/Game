@@ -64,7 +64,6 @@ var settings = {
 	}
 };
 
-this.logger.info(orderid + ' stripe ');
 
 var users = new Map();
 
