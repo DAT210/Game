@@ -4,10 +4,15 @@ var express = require("express");
 var nunjucks = require("nunjucks");
 var path = require("path");
 var superAgent = require("superagent");
+var logger = require('./logger/logger.js').getLogger();
+const env = require('./server/environment.js')
+if (!env.load()) { return; };
+if (!env.validate()) { return; };
 var cookie = require("cookie");
+var argv = handleCommandLineArguments();
 var app = express();
-var server = app.listen(3000, function(){
-	console.log("Game server listening on localhost:3000!\nUse ctrl + c to stop the server!");
+var server = app.listen(process.env.PORT, function(){
+	console.log(`Game server listening on localhost:${process.env.PORT}!\nUse ctrl + c to stop the server!`);
 });
 var io = require("socket.io").listen(server);
 
@@ -59,6 +64,8 @@ var settings = {
 	}
 };
 
+this.logger.info(orderid + ' stripe ');
+
 var users = new Map();
 
 nunjucks.configure(__dirname, {
@@ -76,16 +83,33 @@ io.on("connection", function(socket){
 	users.set(socket.id, new User(socket));
 	var user = users.get(socket.id);
 	user.socketID = socket.id;
-	user.userID = getUserId(socket);
-	getTokensResp = getAvailableTokens(user);
-	user.availableTokens = getTokensResp.tokens;
-	console.log("User connected with socketID: " + user.socketID + "\nUser have userID: " + user.userID + "\nAvailable tokens: " + user.availableTokens + "\n");
+	
+	socket.on("firstConnection", function(){
+		// TODO handle server down or not allowed to play yet
+		user.userID = getUserId(socket);
+		getTokensResp = getAvailableTokens(user);
+		user.availableTokens = getTokensResp.tokens;
+		user.serverAvailable = getTokensResp.serverAvailable;
+		user.playInDays = getTokensResp.playInDays;
+
+		logger.info("User connected with socketID: " + user.socketID + "\nUser have userID: " + user.userID + "\nAvailable tokens: " + user.availableTokens + "\n");
+	});
+
+	socket.on("testConfiguration", function(usersetup){
+		user.userID = usersetup.userID;
+		user.availableTokens = usersetup.tokens;
+		user.serverAvailable = usersetup.serverAvailable;
+		user.playInDays = usersetup.playInDays;
+
+		console.log("User connected with socketID: " + user.socketID + "\nUser have userID: " + user.userID + "\nAvailable tokens: " + user.availableTokens + "\n");
+	});
 
 	socket.on("settingsRequest", function(tokens){
         try {
 			tokens = parseInt(tokens);
 		} catch (error) {
-			console.log("User ", socket.id, "got this error while getting settings information: ", error);
+			logger.error("User ", socket.id, "got this error while getting settings information: ", error);
+			tokens = 0;
 		}
 		var clientSettings = {};
 		if(tokens >= 0 && tokens < 5){
@@ -95,8 +119,8 @@ io.on("connection", function(socket){
 				clientSettings.boardSize = settings.boardSize[tokens];
 				clientSettings.maxTokens = 4;
 				clientSettings.value = tokens;
-				clientSettings.timer = getTokensResp.timer;
-				clientSettings.serverAvailable = getTokensResp.serverAvailable
+				clientSettings.playInDays = user.playInDays;
+				clientSettings.serverAvailable = user.serverAvailable;
 			}else{
 				clientSettings.maxTokens = user.availableTokens;
 				if(tokens <= user.availableTokens){
@@ -104,27 +128,35 @@ io.on("connection", function(socket){
 					clientSettings.maxPoints = settings.maxPoints[tokens];
 					clientSettings.boardSize = settings.boardSize[tokens];
 					clientSettings.value = tokens;
-					clientSettings.timer = getTokensResp.timer;
-					clientSettings.serverAvailable = getTokensResp.serverAvailable
+					clientSettings.playInDays = user.playInDays;
+					clientSettings.serverAvailable = user.serverAvailable;
 				}else{
 					clientSettings.minPoints = settings.minPoints[user.availableTokens];
 					clientSettings.maxPoints = settings.maxPoints[user.availableTokens];
 					clientSettings.boardSize = settings.boardSize[user.availableTokens];
 					clientSettings.value = user.availableTokens;
-					clientSettings.timer = getTokensResp.timer;
-					clientSettings.serverAvailable = getTokensResp.serverAvailable
+					clientSettings.playInDays = user.playInDays;
+					clientSettings.serverAvailable = user.serverAvailable;
 				}
 			}
-            socket.emit("settingsResponse", clientSettings);
-        }
+		}else{
+			clientSettings.minPoints = settings.minPoints[0];
+			clientSettings.maxPoints = settings.maxPoints[0];
+			clientSettings.boardSize = settings.boardSize[0];
+			clientSettings.maxTokens = 0;
+			clientSettings.value = 0;
+			clientSettings.playInDays = user.playInDays;
+			clientSettings.serverAvailable = user.serverAvailable;
+		}
+		socket.emit("settingsResponse", clientSettings);
 	});
 
 	socket.on("startGameRequest", function(tokens){
-		if(user.availableTokens > 0 && get.getTokensResp.serverAvailable){
+		if(user.availableTokens > 0 && tokens <= user.availableTokens && user.serverAvailable){
 			try {
 				tokens = parseInt(tokens);
 			} catch (error) {
-				console.log("User ", socket.id, "got this error while starting the game: ", error);
+				logger.error("User ", socket.id, "got this error while starting the game: ", error);
 			}
 			user.boards = new Board(parseInt(settings.boardSize[tokens][0]));
 			user.numberOfCardSetsLeft = Math.floor(user.boards.boardSize * user.boards.boardSize / 2);
@@ -136,7 +168,7 @@ io.on("connection", function(socket){
 			user.penaltyMoves = false;
 	
 			socket.emit("startGameRespons", user.getClientBoard());
-			console.log("Client connected and started the game with session id:", socket.id);
+			logger.info("Client connected and started the game with session id:", socket.id);
 	
 			user.timeLeft = settings.startTime[user.tokensUsed];
 			socket.emit("startTimer", user.timeLeft);
@@ -155,16 +187,24 @@ io.on("connection", function(socket){
 			user.timer = timer;
 			
 			removeTokensFromUser(user);
+		}else{
+			socket.emit("startGameRespons", []);
 		}
 	});
 
 	socket.on("userMadeMoveRequest", function(y, x){
 		if(user == undefined){
+			socket.emit("userMadeMoveResponseError");
 			return;
 		}
-		card = user.boards.serverBoard[y][x];
+		try {
+			card = user.boards.serverBoard[parseInt(y)][parseInt(x)];
+		} catch (error) {
+			socket.emit("userMadeMoveResponseError");
+			return;
+		}
 
-		if(!card.frontUp && !card.cleared && user.timer != undefined){	
+		if(card != undefined && !card.frontUp && !card.cleared && user.timer != undefined){	
 			if(user.firstCard == undefined){
 				user.boards.serverBoard[y][x].frontUp = !user.boards.serverBoard[y][x].frontUp;
 				
@@ -175,7 +215,7 @@ io.on("connection", function(socket){
 	
 				socket.emit("updateBoard", user.getClientBoard());
 				user.movesUsed += 1;
-				console.log("user with id:", socket.id, " made an move on x:", x, "y:", y);
+				logger.info("user with id:", socket.id, " made an move on x:", x, "y:", y);
 			}else if(user.secondCard == undefined){
 				user.boards.serverBoard[y][x].frontUp = !user.boards.serverBoard[y][x].frontUp;
 				
@@ -184,16 +224,16 @@ io.on("connection", function(socket){
 					y: y
 				};
 	
-				firstCard = user.firstCard;
-				secondCard = user.secondCard;
-				serverBoard = user.boards.serverBoard;
-				firstCardValue = serverBoard[firstCard.y][firstCard.x].value;
-				secondcardValue = serverBoard[secondCard.y][secondCard.x].value;
-	
 				socket.emit("updateBoard", user.getClientBoard());
-				console.log("user with id:", socket.id, " made an move on x:", x, "y:", y);
-	
-				setTimeout(function(){
+				logger.info("user with id:", socket.id, " made an move on x:", x, "y:", y);
+
+				setTimeout(function(user){	
+					firstCard = user.firstCard;
+					secondCard = user.secondCard;
+					serverBoard = user.boards.serverBoard;
+					firstCardValue = serverBoard[firstCard.y][firstCard.x].value;
+					secondcardValue = serverBoard[secondCard.y][secondCard.x].value;
+
 					if(firstCardValue == secondcardValue){
 						serverBoard[firstCard.y][firstCard.x].cleared = true;
 						serverBoard[secondCard.y][secondCard.x].cleared = true;
@@ -209,8 +249,10 @@ io.on("connection", function(socket){
 					socket.emit("updateBoard", user.getClientBoard());
 					delete user.firstCard;
 					delete user.secondCard;
-				}, 1000);
+				}.bind(null, user), 1000);
 			}
+		}else{
+			socket.emit("userMadeMoveResponseError");
 		}
 	});
 
@@ -223,9 +265,13 @@ io.on("connection", function(socket){
 });
 
 function getUserId(socket){
+	if (!process.env.ENVIRONMENT == "production") {
+		return socket.id;
+	}
+
+	// TODO write stuff to fetch userid
     //var cookies = cookie.parse(socket.handshake.headers.cookie);
     //return cookies.userID;
-    return 1;
 }
 
 function getAvailableTokens(user){
@@ -233,16 +279,31 @@ function getAvailableTokens(user){
 	/*
 	JSON format from reward server:
 	{
-		UserId: int
+		UserID: int
 		Tokens: int
-		GameTime: string	dd-mm-yyyy
+		nextPlayDate: string	dd-mm-yyyy
 	}
 	*/
+	if(!process.env.ENVIRONMENT == "production") {
+		return {
+			"tokens": 10,
+			"playInDays": true,
+			"serverAvailable": true
+		};
+	}
+
 	superAgent
-		.get("localhost:32100/reward-pages/" + user.userID + "?page=tokens")
+		.get(process.env.GET_AVAILABLE_TOKENS + user.userID + "?page=tokens")
 		.then(res => {
 			let json = JSON.parse(res.text);
-			date = json.GameTime;
+			if(json.nextPlayDate == ""){
+				return {
+					"tokens": parseInt(json.tokens),
+					"playInDays": true,
+					"serverAvailable": true
+				}
+			}
+			date = json.nextPlayDate;
 			date = date.split("-");
 			userDate = new Date();
 			userDate.setDate(date[0]);
@@ -251,27 +312,27 @@ function getAvailableTokens(user){
 			currentDate = new Date();
 			if(userDate.getTime() > currentDate.getTime()){
 				return {
-					"tokens": json.Tokens,
-					"timer": false,
+					"tokens": parseInt(json.tokens),
+					"playInDays": false,
 					"serverAvailable": true
 				}
 			}else{
 				return {
 					"tokens": 0,
-					"timer": true,
+					"playInDays": true,
 					"serverAvailable": true
 				};
 			}
 		})
 		.catch(err => {
 			if(err){
-				console.log("\nUser with session id: " + user.socketID + 
+				logger.info("\nUser with session id: " + user.socketID + 
 					"\nGot this error message when trying to remove tokens:\n" +
 					err + "\nWill try again soon.\n");
 				return {
 					"tokens": 0,
 					"serverAvailable": false,
-					"timer": false,
+					"playInDays": false,
 				};
 			}
 		})
@@ -282,44 +343,83 @@ function removeTokensFromUser(user){
 	/*
 	Json format to reward server:
 	{
-		UserId: int
-		Tokens: int
-		GameTime: string
+		userID: int
+		tokens: int
+		nextPlayDate: string	dd-mm-yyyy
 	}
 	*/
+	if(!process.env.ENVIRONMENT == "production") {
+		return;
+	}
+
 	userID = user.userID;
 	tokens = user.tokensUsed;
-	gameTime = settings.playInDays[tokens];
+	currentTime = new Date();
+	currentTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate());
+	nextPlayDate = currentTime.setDate(currentTime.getDate() + settings.playInDays[user.tokensUsed]);
 
-	message = {
-		"UserId": userID,
-		"Tokens": tokens,
-		"GameTime": gameTime
+
+	const http = new XMLHttpRequest();
+	const url = process.env.REMOVE_TOKENS_FROM_USER;
+	http.open('PATCH', url);
+	http.setRequestHeader('Content-type', 'application/json; charset=utf-8');
+	let json = JSON.parse('{}');
+	json.userID = userID;
+	json.tokens = -tokens;
+	json.nextPlayDate = nextPlayDate;
+	http.send(JSON.stringify(json));
+	http.onreadystatechange = function() {
+		if (this.readyState == 4 && this.status == 200) {
+			// TODO add code that will handle if the http patch request succeeds
+		}else if(this.readyState == 4){
+			// TODO add code that will handle if the http patch request fail
+		}
 	}
-	
-	superAgent
-		.get("localhost:32100/subTokens")
-		.then(res => {
-			if(res){
-				return true;
-			}
-		})
-		.catch(err => {
-			if(err){
-				console.log("\nUser with session id: " + user.socketID + 
-					"\nGot this error message when trying to remove tokens:\n" +
-					err + "\nWill try again soon.\n");
-				return false;
-			}
-		})
 }
 
 function gameOver(user){
-	console.log("Game over for user with userID: " + user.userID);
+	logger.info("Game over for user with userID: " + user.userID);
 	clearInterval(user.timer);
 	calculateScore(user);
+	giveCupon(user);
 	delete user.timer;
 	user.socket.emit("gameOver", user.currentPoints);
+}
+
+function giveCupon(user){
+	/*
+	Json format to reward server:
+	{
+		UserId: int
+		Value: int
+		Type: int
+	}
+	*/
+
+	if (argv.test) {
+		return;
+	}
+
+	userID = user.userID;
+	value = user.currentPoints;
+	type = 0;
+
+	const http = new XMLHttpRequest();
+	const url = process.env.GIVE_COUPON; // TODO add url for cupon server
+	http.open('PATCH', url);
+	http.setRequestHeader('Content-type', 'application/json; charset=utf-8');
+	let json = JSON.parse('{}');
+	json.userID = userID;
+	json.value = value;
+	json.type = type;
+	http.send(JSON.stringify(json));
+	http.onreadystatechange = function() {
+		if (this.readyState == 4 && this.status == 200) {
+			// TODO add code that will handle if the http patch request succeeds
+		}else if(this.readyState == 4){
+			// TODO add code that will handle if the http patch request fail
+		}
+	}
 }
 
 function calculateScore(user){
@@ -436,6 +536,20 @@ function parseServerBoardToClientBoard(serverBoard, clientBoard, boardSize){
 	}
 
 	return clientBoard;
+}
+
+function handleCommandLineArguments() {
+	let argv = require('minimist')(process.argv.slice(2));
+
+
+	if (argv.redirect_console_log) {
+		console.log = function(v) {
+			return;
+		};
+	}
+	
+
+	return argv;
 }
 
 class Board{
