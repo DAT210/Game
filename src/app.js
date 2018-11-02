@@ -4,7 +4,7 @@ var express = require("express");
 var nunjucks = require("nunjucks");
 var path = require("path");
 var superAgent = require("superagent");
-var logger = require('./logger/logger.js').getLogger();
+var logger = require('./tools/logger.js').getLogger();
 const env = require('./tools/environment.js')
 if (!env.load()) { return; };
 if (!env.validate()) { return; };
