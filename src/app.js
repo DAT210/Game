@@ -11,7 +11,7 @@ var logger = require('./tools/logger.js').getLogger(process.env.ENVIRONMENT);
 var cookie = require("cookie");
 var app = express();
 var server = app.listen(process.env.PORT, function(){
-	logger.log("info", `Game server listening on localhost:${process.env.PORT}!\nUse ctrl + c to stop the server!`);
+	logger.log("info", `Game server listening on localhost:${process.env.PORT}! Use ctrl + c to stop the server!`);
 });
 var io = require("socket.io").listen(server);
 
@@ -89,7 +89,7 @@ io.on("connection", function(socket){
 		user.serverAvailable = getTokensResp.serverAvailable;
 		user.playInDays = getTokensResp.playInDays;
 
-		logger.info("User connected with socketID: " + user.socketID + "\nUser have userID: " + user.userID + "\nAvailable tokens: " + user.availableTokens + "\n");
+		logger.info("User connected with socketID: " + user.socketID + ". User have userID: " + user.userID + ". Available tokens: " + user.availableTokens);
 	});
 
 	socket.on("testConfiguration", function(usersetup){
@@ -98,7 +98,7 @@ io.on("connection", function(socket){
 		user.serverAvailable = usersetup.serverAvailable;
 		user.playInDays = usersetup.playInDays;
 
-		logger.info("User connected with socketID: " + user.socketID + "\nUser have userID: " + user.userID + "\nAvailable tokens: " + user.availableTokens + "\n");
+		logger.info("User connected with socketID: " + user.socketID + ". User have userID: " + user.userID + ". Available tokens: " + user.availableTokens);
 	});
 
 	socket.on("settingsRequest", function(tokens){
