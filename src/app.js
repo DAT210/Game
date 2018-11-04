@@ -45,9 +45,9 @@ var settings = {
 	},
 	"startTime":{
 		"1": 30,
-		"2": 45,
-		"3": 60,
-		"4": 90
+		"2": 60,
+		"3": 120,
+		"4": 150
 	},
 	"playInDays": {
 		"1": 2,
@@ -58,8 +58,8 @@ var settings = {
 	"allowedMoves": {
 		"1": 16,
 		"2": 32,
-		"3": 42,
-		"4": 60
+		"3": 52,
+		"4": 80
 	}
 };
 
@@ -72,7 +72,7 @@ nunjucks.configure(__dirname, {
 
 app.use(express.static(path.join(__dirname, "public")));
 
-app.get("/reward/game", function(req, res){
+app.get(process.env.GAME_SERVICE, function(req, res){
 	res.render("template/game_template.html", {Port: process.env.PORT});
 });
 
@@ -82,12 +82,18 @@ io.on("connection", function(socket){
 	user.socketID = socket.id;
 	
 	socket.on("firstConnection", function(){
+		console.log("test");
 		// TODO handle server down or not allowed to play yet
 		user.userID = functions.getUserId(socket);
 		getTokensResp = functions.getAvailableTokens(user);
 		user.availableTokens = getTokensResp.tokens;
 		user.serverAvailable = getTokensResp.serverAvailable;
 		user.playInDays = getTokensResp.playInDays;
+		if(getTokensResp.nextPlayDate){
+			user.nextPlayDate = getTokensResp.nextPlayDate;
+		}
+
+		socket.emit("firstConnectionResponse", {"userID": user.userID, "availableTokens": user.availableTokens});
 
 		logger.info("User connected with socketID: " + user.socketID + ". User have userID: " + user.userID + ". Available tokens: " + user.availableTokens);
 	});
@@ -109,31 +115,27 @@ io.on("connection", function(socket){
 			tokens = 0;
 		}
 		var clientSettings = {};
+		clientSettings.playInDays = user.playInDays;
+		clientSettings.serverAvailable = user.serverAvailable;
+		// Check if tokens are a allowed number
 		if(tokens >= 0 && tokens < 5){
-			if(user.availableTokens >= 4){
-				clientSettings.minPoints = settings.minPoints[tokens];
-				clientSettings.maxPoints = settings.maxPoints[tokens];
-				clientSettings.boardSize = settings.boardSize[tokens];
-				clientSettings.maxTokens = 4;
-				clientSettings.value = tokens;
-				clientSettings.playInDays = user.playInDays;
-				clientSettings.serverAvailable = user.serverAvailable;
-			}else{
+			clientSettings.minPoints = settings.minPoints[tokens];
+			clientSettings.maxPoints = settings.maxPoints[tokens];
+			clientSettings.boardSize = settings.boardSize[tokens];
+			clientSettings.maxTokens = 4;
+			clientSettings.value = tokens;
+			
+			// Check if user have less then 4 available tokens
+			if(user.availableTokens < 4){
 				clientSettings.maxTokens = user.availableTokens;
-				if(tokens <= user.availableTokens){
-					clientSettings.minPoints = settings.minPoints[tokens];
-					clientSettings.maxPoints = settings.maxPoints[tokens];
-					clientSettings.boardSize = settings.boardSize[tokens];
-					clientSettings.value = tokens;
-					clientSettings.playInDays = user.playInDays;
-					clientSettings.serverAvailable = user.serverAvailable;
-				}else{
+				clientSettings.value = tokens;
+				
+				// Check if tokens is higher then available tokens
+				if(tokens > user.availableTokens){
 					clientSettings.minPoints = settings.minPoints[user.availableTokens];
 					clientSettings.maxPoints = settings.maxPoints[user.availableTokens];
 					clientSettings.boardSize = settings.boardSize[user.availableTokens];
 					clientSettings.value = user.availableTokens;
-					clientSettings.playInDays = user.playInDays;
-					clientSettings.serverAvailable = user.serverAvailable;
 				}
 			}
 		}else{
@@ -142,8 +144,31 @@ io.on("connection", function(socket){
 			clientSettings.boardSize = settings.boardSize[0];
 			clientSettings.maxTokens = 0;
 			clientSettings.value = 0;
-			clientSettings.playInDays = user.playInDays;
-			clientSettings.serverAvailable = user.serverAvailable;
+		}
+
+		// Change the message based on the status and value
+		clientSettings.message = `<p>This will start a game using ${clientSettings.value} ` + 
+									`token${clientSettings.value > 1 ? "s" : ""}. You will have` + 
+									` ${settings.startTime[clientSettings.value]} seconds to clear` + 
+									` out a board with a size of ${clientSettings.boardSize}. After` + 
+									` the game has ended you will be rewarded with a discount coupon` + 
+									` worth between ${clientSettings.minPoints}% and ` + 
+									`${clientSettings.maxPoints}% on your next purchase. If you use` + 
+									` more than ${settings.allowedMoves[clientSettings.value]} flips` + 
+									` you will lose ${settings.penalty[clientSettings.value]}%. If ` + 
+									`you use up 80% of the time you will lose ` + 
+									`${settings.penalty[clientSettings.value]}%. If you use up all ` + 
+									`the time you will get the minimum reward. Increasing the amount ` + 
+									`of tokens you use will increase the board size but also increase ` + 
+									`the reward.</p></br><p>Good luck!</p>`;
+		if(!clientSettings.serverAvailable){
+			clientSettings.message = "<p>Sorry our servers are down! Check back later.</p>";
+		}else if(!clientSettings.playInDays){
+			clientSettings.message = `<p>Sorry there has not been enough time since you last played! Check back later.</p><p>Next time you can play ${user.nextPlayDate}</p>`;
+		}else if(clientSettings.value == 0){
+			clientSettings.message = "<p>You have selected 0 tokens!</p>"
+		}else if(user.availableTokens == 0){
+			clientSettings.message = "<p>Sorry you have no tokens available to use!</p>";
 		}
 		socket.emit("settingsResponse", clientSettings);
 	});
@@ -295,6 +320,7 @@ var functions = module.exports = {
 			.get(process.env.GET_AVAILABLE_TOKENS + user.userID + "?page=tokens")
 			.then(res => {
 				let json = JSON.parse(res.text);
+				//if the user have never played before the next play date should be an empty string
 				if(json.nextPlayDate == ""){
 					return {
 						"tokens": parseInt(json.tokens),
@@ -311,13 +337,14 @@ var functions = module.exports = {
 				currentDate = new Date();
 				if(userDate.getTime() > currentDate.getTime()){
 					return {
-						"tokens": parseInt(json.tokens),
+						"tokens": 0,
 						"playInDays": false,
-						"serverAvailable": true
+						"serverAvailable": true,
+						"nextPlayDate": json.nextPlayDate
 					}
 				}else{
 					return {
-						"tokens": 0,
+						"tokens": parseInt(json.tokens),
 						"playInDays": true,
 						"serverAvailable": true
 					};

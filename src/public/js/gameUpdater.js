@@ -1,23 +1,25 @@
 var socket = io("http://localhost:" + getPort());
 var settings = {
-  	"minPoints": 5,
-  	"maxPoints": 15,
-  	"boardSize": "4X4"
+  	"minPoints": 1,
+  	"maxPoints": 5,
+	"boardSize": "4X4",
+	"penalty": 2,
+	"allowedMoves": 16,
+	"startTime": 30
 };
 
 socket.on("settingsResponse", function(serverSettings){
 	settings = serverSettings;
-  	$("#minPointsLabel").html("Minimum points: " + settings.minPoints);
-  	$("#maxPointsLabel").html("Maximum points: " + settings.maxPoints);
-  	$("#boardSizeLabel").html("Board size: " + settings.boardSize);
+	$("#infocontainer").html(serverSettings.message);
+	$("#settingscontainer h2").html("Tokens to use: " + settings.value);
   	$("#tokenSlider").prop({
     	"max": settings.maxTokens
   	});
   	$("#tokenSlider").val(settings.value);
   	if($("#tokenSlider").val() == 0){
-    	$("#btn_start").hide();
+		$("#btncontainer").hide();
   	}else{
-    	$("#btn_start").show();
+    	$("#btncontainer").show();
   	}
 });
 
@@ -44,7 +46,15 @@ socket.on("timerUpdate", function(timeLeft){
 });
 
 socket.on("gameOver", function(currentPoints){
-  	$("#gameContent").html("<h1>Game over!</h1><h1>You won a coupon worth " + currentPoints + "% on your next purchase!</h1>");
+	if(currentPoints = settings.maxPoints){
+		$("#gameContent").html("<h1>Congratulation!</h1><h1>You won a coupon worth " + currentPoints + "% on your next purchase!</h1>");
+	}else{
+		$("#gameContent").html("<h1>Game over!</h1><h1>You won a coupon worth " + currentPoints + "% on your next purchase!</h1>");
+	}
+});
+
+socket.on("firstConnectionResponse", function(userInformation){
+	$("#userInfo").html(`<p>User id: ${userInformation.userID}</p><p>Available tokens: ${userInformation.availableTokens}</p>`)
 });
 
 function updateBoard(clientBoard){
