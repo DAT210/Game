@@ -46,7 +46,7 @@ socket.on("timerUpdate", function(timeLeft){
 });
 
 socket.on("gameOver", function(currentPoints){
-	if(currentPoints = settings.maxPoints){
+	if(currentPoints > settings.minPoints){
 		$("#gameContent").html("<h1>Congratulation!</h1><h1>You won a coupon worth " + currentPoints + "% on your next purchase!</h1>");
 	}else{
 		$("#gameContent").html("<h1>Game over!</h1><h1>You won a coupon worth " + currentPoints + "% on your next purchase!</h1>");
@@ -96,7 +96,6 @@ function addStartMenuEvents(){
 }
 
 function addGameContent(clientBoard){
-	console.log(clientBoard);
 	$("#gameContent").append($("<div></div>").attr("id", "board"));
 	var card;
 	for (var y = 0; y < clientBoard.length; y++) {

@@ -82,7 +82,6 @@ io.on("connection", function(socket){
 	user.socketID = socket.id;
 	
 	socket.on("firstConnection", function(){
-		console.log("test");
 		// TODO handle server down or not allowed to play yet
 		user.userID = functions.getUserId(socket);
 		getTokensResp = functions.getAvailableTokens(user);

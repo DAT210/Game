@@ -1,7 +1,6 @@
 var should = require("should");
 var io = require("socket.io-client");
 const env = require("../src/tools/environment.js")
-const functions = require("../src/app.js")
 if (!env.load()) { return; };
 if (!env.validate()) { return; };
 
@@ -259,54 +258,39 @@ describe("Testing", function(){
 		describe("Testing connecting n amount of clients and disconnecting them", function(){
 			let numberOfClients = 15;
 			it(`Testing a server with ${numberOfClients} clients connected`, function(done){
+
+				client = io.connect(socketURL, options);
+
+				client.disconnect();
+
 				done();
-			});
-		});
-	});
-	describe("Testing functions on the server", function(){
-		describe("Testing the getUserId function", function(){
-			it("testing function", function(done){
-				done();
-			});
-		});
-		describe("Testing the getAvailableTokens function", function(){
-			it("testing function", function(done){
-				done();
-			});
-		});
-		describe("Testing the removeTokensFromUser function", function(){
-			it("testing function", function(done){
-				done();
-			});
-		});
-		describe("Testing the gameOver function", function(){
-			it("testing function", function(done){
-				done();
-			});
-		});
-		describe("Testing the giveCoupon function", function(){
-			it("testing function", function(done){
-				done();
-			});
-		});
-		describe("Testing the calculateScore function", function(){
-			it("testing function", function(done){
-				done();
-			});
-		});
-		describe("Testing the createAndShuffleBoard function", function(){
-			it("testing function", function(done){
-				done();
-			});
-		});
-		describe("Testing the shuffleServerBoard function", function(){
-			it("testing function", function(done){
-				done();
-			});
-		});
-		describe("Testing the parseServerBoardToClientBoard function", function(){
-			it("testing function", function(done){
-				done();
+
+
+				/*let clients = [];
+
+				numberofClientsConnected = 0;
+
+				client = io.connect(socketURL, options);
+
+				client.disconnect();
+
+				for(let i = 0; i < numberOfClients; i++){
+					client = io.connect(socketURL, options);
+					client.emit("firstConnection");
+					console.log("test" + i)
+					client.on("firstConnectionResponse", function(resp){
+						console.log("response" + numberofClientsConnected);
+						numberofClientsConnected++;
+					})
+					clients[i] = client;
+				}
+				while(numberofClientsConnected != numberOfClients){
+
+				}
+				for(let i = 0; i < numberOfClients; i++){
+					clients[i].disconnect();
+				}
+				done();*/
 			});
 		});
 	});
