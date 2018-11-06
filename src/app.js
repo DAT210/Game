@@ -1,5 +1,3 @@
-/*jshint esversion: 6*/
-
 var express = require("express");
 var nunjucks = require("nunjucks");
 var path = require("path");
