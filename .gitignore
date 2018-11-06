@@ -1,3 +1,19 @@
+#############
+#   Node    #
+#############
+node_modules
+package-lock.json
+
+#########################
+#   Environment files   #
+#########################
+dev.env
+production.env
+test.env
+
+#############
+#   Logs    #
+#############
 node_modules
 package-lock.json
 dev.env
