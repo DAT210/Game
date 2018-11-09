@@ -19,6 +19,7 @@ module.exports.load = function loadEnvironmentVariables() {
 module.exports.validate = function validateEnvironmentVariables() {
 	let requiredEnv = [
         "PORT",
+		"GAME_SERVICE",
 		"ENVIRONMENT",
 		"HOME",
 		"MENU",
@@ -27,9 +28,9 @@ module.exports.validate = function validateEnvironmentVariables() {
 		"ABOUT",
 		"BLOG",
 		"PAYMENT",
-		"GET_AVAILABLE_TOKENS",
-		"REMOVE_TOKENS_FROM_USER",
-		"GIVE_COUPON"
+		"GET_AVAILABLE_TOKENS_API",
+		"REMOVE_TOKENS_FROM_USER_API",
+		"GIVE_COUPON_API"
 	];
 
 	// Tests all requiredEnv vars if they are empty and if they are longer than 0 length

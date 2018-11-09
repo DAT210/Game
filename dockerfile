@@ -1,18 +1,18 @@
 FROM node:8
 
-WORKDIR /usr/src/app
+WORKDIR usr/src/app
 
 ARG port
 ENV PORT $port
 
-COPY package*.json ./
+COPY package.json ./
 RUN npm install
 
 COPY ./src ./src
 
-ENV NODE_ENV production
 COPY ./env/production.env ./env
+ENV NODE_ENV production
 
 EXPOSE $port
 
-CMD [ "node", ".src/app.js" ]
+CMD [ "node", "./src/app.js" ]
