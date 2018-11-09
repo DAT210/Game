@@ -48,7 +48,7 @@ module.exports.getLogger = function setupLogger(environment) {
 				transports: [new transports.DailyRotateFile({
 					// Setup for log file
 					filename: temp_path+`/test-logs/%DATE%-testlog.json`,
-					datePattern: "YYYY-MM-DD-HH-mm"
+					datePattern: "YYYY-MM-DD-HH"
 				})]
 			});
 		case "production":

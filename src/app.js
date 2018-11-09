@@ -186,7 +186,7 @@ io.on("connection", function(socket){
 			user.penaltyTime = false;
 			user.penaltyMoves = false;
 	
-			socket.emit("startGameRespons", user.getClientBoard());
+			socket.emit("startGameResponse", user.getClientBoard());
 			logger.info("Client connected and started the game with session id:" + user.socketID);
 	
 			user.timeLeft = settings.startTime[user.tokensUsed];
@@ -207,7 +207,7 @@ io.on("connection", function(socket){
 			
 			functions.removeTokensFromUser(user);
 		}else{
-			socket.emit("startGameRespons", []);
+			socket.emit("startGameResponse", []);
 		}
 	});
 
