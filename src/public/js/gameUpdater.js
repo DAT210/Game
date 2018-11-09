@@ -23,7 +23,7 @@ socket.on("settingsResponse", function(serverSettings){
   	}
 });
 
-socket.on("startGameRespons", function(clientBoard){
+socket.on("startGameResponse", function(clientBoard){
   	if(clientBoard.length != 0){
     	clearMenu();
     	addGameContent(clientBoard);

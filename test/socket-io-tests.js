@@ -11,10 +11,10 @@ var options ={
   	"force new connection": true
 };
 
-describe("Testing", function(){
+describe("Testing Socket.io functions", function(){
 	describe("Testing single user connection", function(){
 		describe("Testing settingRequest", function(){
-			let validTests = {
+			let validSettingTests = {
 				"request": [0, 1, 2, 3, 4],
 				"response": [{
 					"minPoints": 0,
@@ -63,7 +63,7 @@ describe("Testing", function(){
 					"message": "<p>This will start a game using 4 tokens. You will have 150 seconds to clear out a board with a size of 7X7. After the game has ended you will be rewarded with a discount coupon worth between 10% and 25% on your next purchase. If you use more than 80 flips you will lose 5%. If you use up 80% of the time you will lose 5%. If you use up all the time you will get the minimum reward. Increasing the amount of tokens you use will increase the board size but also increase the reward.</p></br><p>Good luck!</p>"
 				}]
 			};
-			let invalidTests = {
+			let invalidSettingTests = {
 				"userSetup": [{
 					"tokens": 0,
 					"serverAvailable": true,
@@ -108,35 +108,35 @@ describe("Testing", function(){
 				}
 			};
 			describe("Sending valid setting request", function(){
-				for(let i = 0; i < validTests.request.length; i++){
-				it("Valid setting request test index " + i, function(done){
-					let client = io.connect(socketURL, options);
-			
-					client.emit("testConfiguration", {"tokens": 10, "serverAvailable": true, "playInDays": true, "userID": "id"+i});
-			
-					client.emit("settingsRequest", validTests.request[i]);          
-			
-					client.on("settingsResponse", function(serversettings){
-						serversettings.should.eql(validTests.response[i]);
-						client.disconnect();
-						done();
+				for(let i = 0; i < validSettingTests.request.length; i++){
+					it("Valid setting request test index " + i, function(done){
+						let client = io.connect(socketURL, options);
+				
+						client.emit("testConfiguration", {"tokens": 10, "serverAvailable": true, "playInDays": true, "userID": "id"+i});
+				
+						client.emit("settingsRequest", validSettingTests.request[i]);          
+				
+						client.on("settingsResponse", function(serversettings){
+							serversettings.should.eql(validSettingTests.response[i]);
+							client.disconnect();
+							done();
+						});
 					});
-				});
 				}
 			});
 			describe("Sending invalid setting request", function(){
-				for(let i = 0; i < invalidTests.request.length; i++){
+				for(let i = 0; i < invalidSettingTests.request.length; i++){
 					it("Invalid setting request test index " + i, function(done){
-						var client = io.connect(socketURL, options);
+						let client = io.connect(socketURL, options);
 
-						client.emit("testConfiguration", invalidTests.userSetup[i]);
+						client.emit("testConfiguration", invalidSettingTests.userSetup[i]);
 				
-						client.emit("settingsRequest", invalidTests.request[i]);
+						client.emit("settingsRequest", invalidSettingTests.request[i]);
 				
 						client.on("settingsResponse", function(serversettings){
-						serversettings.should.eql(invalidTests.response);
-						client.disconnect();
-						done();
+							serversettings.should.eql(invalidSettingTests.response);
+							client.disconnect();
+							done();
 						});
 					});
 				}
@@ -150,10 +150,10 @@ describe("Testing", function(){
 						client.emit("testConfiguration", {"tokens": 10, "serverAvailable": true, "playInDays": true, "userID": "id1"});
 						client.emit("startGameRequest", i);
 				
-						client.on("startGameRespons", function(clientboard){
-						clientboard.length.should.eql(i + 3);
-						client.disconnect();
-						done();
+						client.on("startGameResponse", function(clientboard){
+							clientboard.length.should.eql(i + 3);
+							client.disconnect();
+							done();
 						});
 					});
 				}
@@ -161,62 +161,68 @@ describe("Testing", function(){
 			describe("Testing invalid start game request", function(){
 				it("Sending invalid start game request, invalid argument", function(done){
 					let client = io.connect(socketURL, options);
+
+					client.on("connect", function(){
 						client.emit("testConfiguration", {"tokens": 10, "serverAvailable": true, "playInDays": true, "userID": "id1"});
 						client.emit("startGameRequest", "test");
-				
-						client.on("startGameRespons", function(clientboard){
+					});
+			
+					client.on("startGameResponse", function(clientboard){
 						clientboard.length.should.eql(0);
 						client.disconnect();
 						done();
-						});
+					});
 				});
 				it("Sending invalid start game request, user have 0 tokens and sending request using valid amount of tokens", function(done){
-				let client = io.connect(socketURL, options);
-					client.emit("testConfiguration", {"tokens": 0, "serverAvailable": true, "playInDays": true, "userID": "id1"});
-					client.emit("startGameRequest", 3);
+					let client = io.connect(socketURL, options);
+
+					client.on("connect", function(){
+						client.emit("testConfiguration", {"tokens": 0, "serverAvailable": true, "playInDays": true, "userID": "id1"});
+						client.emit("startGameRequest", 3);
+					});
 			
-					client.on("startGameRespons", function(clientboard){
-					clientboard.length.should.eql(0);
-					client.disconnect();
-					done();
+					client.on("startGameResponse", function(clientboard){
+						clientboard.length.should.eql(0);
+						client.disconnect();
+						done();
 					});
 				});
 			});
 		});
 		describe("Testing user making move requests", function(){
 			describe("Testing user making valid moves", function(){
-				let request = [
+				let validMoveRequestTest = [
 					{"x": 1, "y":1},
 					{"x": 1, "y":2}
 				];
 		
 				it("testing two valid moves", function(done){
-				let client = io.connect(socketURL, options);
-		
-				client.emit("testConfiguration", {"tokens": 10, "userID": "user1", "serverAvailable": true, "playInDays": true});
-				client.emit("startGameRequest", 1);
-		
-				for(let i = 0; i < request.length; i++){
-					client.emit("userMadeMoveRequest", request[i].y, request[i].x);
-				}
-		
-				let number = 0;
-		
-				client.on("updateBoard", function(clientboard){
-					clientboard[request[number].y][request[number].x].value.should.be.aboveOrEqual(0);
-					
-					number++;
-					if(number == request.length){
-					client.disconnect();
-					done();
+					let client = io.connect(socketURL, options);
+			
+					client.emit("testConfiguration", {"tokens": 10, "userID": "user1", "serverAvailable": true, "playInDays": true});
+					client.emit("startGameRequest", 1);
+			
+					for(let i = 0; i < validMoveRequestTest.length; i++){
+						client.emit("userMadeMoveRequest", validMoveRequestTest[i].y, validMoveRequestTest[i].x);
 					}
-				});
+			
+					let testsDone = 0;
+			
+					client.on("updateBoard", function(clientboard){
+						clientboard[validMoveRequestTest[testsDone].y][validMoveRequestTest[testsDone].x].value.should.be.aboveOrEqual(0);
+						
+						testsDone++;
+						if(testsDone == validMoveRequestTest.length){
+							client.disconnect();
+							done();
+						}
+					});
 				});
 				
 			});
 			describe("Testing user making invalid moves", function(){
-				it("testing invalid moves outside the board", function(done){
-					requests = [
+				it("testing invalid moves outside the board and with non int values", function(done){
+					invalidMoveRequestTest = [
 						{"y": -1, "x": 2},
 						{"y": 2, "x": -1},
 						{"y": -1, "x": 2},
@@ -233,15 +239,15 @@ describe("Testing", function(){
 					client.emit("testConfiguration", {"tokens": 10, "userID": "user1", "serverAvailable": true, "playInDays": true});
 					client.emit("startGameRequest", 1);
 			
-					for(let i = 0; i < requests.length; i++){
-						client.emit("userMadeMoveRequest", requests[i].y, requests[i].x);
+					for(let i = 0; i < invalidMoveRequestTest.length; i++){
+						client.emit("userMadeMoveRequest", invalidMoveRequestTest[i].y, invalidMoveRequestTest[i].x);
 					}
 					
-					let number = 0;
+					let testsDone = 0;
 			
 					client.on("userMadeMoveResponseError", function(){
-						number++;
-						if(number == requests.length){
+						testsDone++;
+						if(testsDone == invalidMoveRequestTest.length){
 							client.disconnect();
 							done();
 						}
@@ -256,41 +262,29 @@ describe("Testing", function(){
 	});
 	describe("Testing multi user connection", function(){
 		describe("Testing connecting n amount of clients and disconnecting them", function(){
-			let numberOfClients = 15;
+			let numberOfClients = 500;
 			it(`Testing a server with ${numberOfClients} clients connected`, function(done){
+				this.timeout(0);
 
-				client = io.connect(socketURL, options);
-
-				client.disconnect();
-
-				done();
-
-
-				/*let clients = [];
-
-				numberofClientsConnected = 0;
-
-				client = io.connect(socketURL, options);
-
-				client.disconnect();
+				let clients = [];
 
 				for(let i = 0; i < numberOfClients; i++){
-					client = io.connect(socketURL, options);
-					client.emit("firstConnection");
-					console.log("test" + i)
-					client.on("firstConnectionResponse", function(resp){
-						console.log("response" + numberofClientsConnected);
-						numberofClientsConnected++;
-					})
-					clients[i] = client;
+					let client = io.connect(socketURL, options);
+					client.on("connect", function(){
+						clients.push(client)
+						process.stdout.write('Connecting: ' + parseInt(clients.length / numberOfClients * 100) + '\r');
+						if(clients.length == numberOfClients){
+							for(let i = 0; i < clients.length; i++){
+								process.stdout.write('Disconnecting: ' + parseInt(i / numberOfClients * 100) + '\r');
+								if(clients[i].connected != true){
+									done("user not connected");
+								}
+								clients[i].disconnect();
+							}
+							done();
+						}
+					});
 				}
-				while(numberofClientsConnected != numberOfClients){
-
-				}
-				for(let i = 0; i < numberOfClients; i++){
-					clients[i].disconnect();
-				}
-				done();*/
 			});
 		});
 	});

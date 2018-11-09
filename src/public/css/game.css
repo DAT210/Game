@@ -125,9 +125,8 @@
 }
 #gameContent{
     min-width: 1200px;
-    min-height: 700px;
+    height: 770px;
     width: 62.5%;
-    height: 64.8%;
     margin: auto;
   }
 #board{

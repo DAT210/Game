@@ -1,11 +1,11 @@
 {
-  "name": "Memory-Game",
+  "name": "memory_game",
   "version": "1.0.0",
   "description": "",
   "main": "/src/app.js",
   "scripts": {
     "server": "node src/app.js",
-    "test-windows": "concurrently --kill-others --success first \"node src/app.js\" \"mocha --slow 0\""
+    "test-win": "concurrently --kill-others --success first \"node src/app.js\" \"mocha --slow 0\""
   },
   "repository": {
     "type": "git",
