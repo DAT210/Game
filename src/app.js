@@ -3,6 +3,7 @@ var nunjucks = require("nunjucks");
 var path = require("path");
 var superAgent = require("superagent");
 const env = require('./tools/environment.js')
+console.log(process.env.ENVIRONMENT);
 if (!env.load()) { return; };
 if (!env.validate()) { return; };
 var logger = require('./tools/logger.js').getLogger(process.env.ENVIRONMENT);
