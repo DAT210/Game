@@ -19,16 +19,9 @@ module.exports.load = function loadEnvironmentVariables() {
 
 module.exports.validate = function validateEnvironmentVariables() {
 	let requiredEnv = [
-        "PORT",
+		"PORT",
 		"GAME_SERVICE",
 		"ENVIRONMENT",
-		"HOME",
-		"MENU",
-		"RESERVATION",
-		"GALLERY",
-		"ABOUT",
-		"BLOG",
-		"PAYMENT",
 		"GET_AVAILABLE_TOKENS_API",
 		"REMOVE_TOKENS_FROM_USER_API",
 		"GIVE_COUPON_API"
