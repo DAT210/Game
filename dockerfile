@@ -16,5 +16,4 @@ ENV NODE_ENV production
 
 EXPOSE $port
 
-#CMD ["ls", "./env"]
 CMD [ "node", "./src/app.js" ]
