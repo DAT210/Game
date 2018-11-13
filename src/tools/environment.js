@@ -2,6 +2,7 @@ const path = require('path')
 
 module.exports.load = function loadEnvironmentVariables() {
 	let envfile = process.env.NODE_ENV;
+	console.log(envfile)
 
 	if (envfile === undefined) {
 		console.log('You need to set the NODE_ENV variable to run this program.');
@@ -18,19 +19,15 @@ module.exports.load = function loadEnvironmentVariables() {
 
 module.exports.validate = function validateEnvironmentVariables() {
 	let requiredEnv = [
-        "PORT",
+		"PORT",
+		"GAME_SERVICE",
 		"ENVIRONMENT",
-		"HOME",
-		"MENU",
-		"RESERVATION",
-		"GALLERY",
-		"ABOUT",
-		"BLOG",
-		"PAYMENT",
-		"GET_AVAILABLE_TOKENS",
-		"REMOVE_TOKENS_FROM_USER",
-		"GIVE_COUPON"
+		"GET_AVAILABLE_TOKENS_API",
+		"REMOVE_TOKENS_FROM_USER_API",
+		"GIVE_COUPON_API"
 	];
+
+	console.log(process.env.GAME_SERVICE);
 
 	// Tests all requiredEnv vars if they are empty and if they are longer than 0 length
 	let unsetEnv = requiredEnv.filter((env) => !(process.env[env] !== ""));
