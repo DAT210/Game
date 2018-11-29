@@ -1,100 +1,115 @@
-![Logo of the project](./images/logo.sample.png)
+# Game service
+> Made by group 7 ([Payment](https://github.com/DAT210/Payment), [Rewards](https://github.com/DAT210/Rewards), [Game](https://github.com/DAT210/Game))
 
-# Game &middot; [![Build Status](https://img.shields.io/travis/npm/npm/latest.svg?style=flat-square)](https://travis-ci.org/npm/npm) [![npm](https://img.shields.io/npm/v/npm.svg?style=flat-square)](https://www.npmjs.com/package/npm) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/your/your-project/blob/master/LICENSE)
-> Additional information or tag line
-
-A brief description of your project, what it is used for.
+The game service is used for customers to earn coupons using game tokens that they recieve after a purchase.
 
 ## Installing / Getting started
 
-A quick introduction of the minimal setup you need to get a hello world up &
-running.
+You can run the Game service with Docker or Node.
 
+This service depends on environment variables found in the default.env file.
+Before running you need have them in a environment file named "test.env", "dev.env" or "production.env".
+
+
+Copy and rename the /env/default.env file and fill in your variables.
+The service determines which .env file to use based on your NODE_ENV environment variable.
+
+Docker
 ```shell
-commands here
+# Navigate to project directory
+cd project_directory
+# Modify environment variables in the Dockerfile
+vi Dockerfile
+# Create a Docker image called gameservice
+docker build -t gameservice --build-arg Port <port> .
+# Run the image in detached mode
+docker run -p <running_port>:<port> -d paymentservice
 ```
 
-Here you should say what actually happens when you execute the code above.
+Node
+```shell
+# Navigate to project directory
+cd project_directory
+# Install dependencies
+npm install
+# Create .env file
+node tools/setup_env.js
+# Set environment variable
+	# Windows Powershell
+    	$env:NODE_ENV = "<name>"
+	# Windows CMD
+	SET NODE_ENV=<name>
+# Run the server
+node src/app.js
+
+# If you're using a linux terminal you run
+# it when you set the environment variable
+NODE_ENV=<name> node src/app.js
+```
+
+You can now connect to the service at localhost:port/"gameservice address set in env file".
+
 
 ## Developing
 
 ### Built With
-List main libraries, frameworks used including versions (React, Angular etc...)
+
+Javascript
+NodeJS 11.3.0
+dotenv: 6.1.0
+expressjs: 4.16.3
+minimist: 1.2.0
+mocha: 5.2.0
+nunjucks: 3.1.3
+should: 13.2.3
+socket.io: 2.1.1
+superagent: 3.8.3
+winston: 3.1.0
+winston-daily-rotate-file: 3.4.1
+concurrently: 4.0.1
 
 ### Prerequisites
-What is needed to set up the dev environment. For instance, global dependencies or any other tools. include download links.
+
+You need [NodeJS](https://nodejs.org) to develop this service.
 
 
 ### Setting up Dev
 
-Here's a brief intro about what a developer must do in order to start developing
-the project further:
-
 ```shell
-git clone https://github.com/your/your-project.git
-cd your-project/
-packagemanager install
+# Clone repository from github
+git clone https://github.com/DAT210/Game.git
+# Navigate to it
+cd Game/
+# Install dependencies
+npm install
+# Create dev environment file
+	cp ./env/default.dev ./env/dev.env
+	vi ./env/dev.env
+# Or
+	node tools/setup_env.js
 ```
-
-And state what happens step-by-step. If there is any virtual environment, local server or database feeder needed, explain here.
 
 ### Building
 
-If your project needs some additional steps for the developer to build the
-project after some code changes, state them here. for example:
-
-```shell
-./configure
-make
-make install
-```
-
-Here again you should state what actually happens when the code above gets
-executed.
+Use the steps from installing / getting started 
 
 ### Deploying / Publishing
-give instructions on how to build and release a new version
-In case there's some step you have to take that publishes this project to a
-server, this is the right time to state it.
 
 ```shell
 packagemanager deploy your-project -s server.com -u username -p password
 ```
 
-And again you'd need to tell what the previous code actually does.
-
-## Versioning
-
-We can maybe use [SemVer](http://semver.org/) for versioning. For the versions available, see the [link to tags on this repository](/tags).
-
-
-## Configuration
-
-Here you should write what are all of the configurations a user can enter when
-using the project.
-
 ## Tests
 
-Describe and show how to run the tests with code examples.
-Explain what these tests test and why.
+Before running any tests you need to set up a /env/test.env file with test environment variables.
 
-```shell
-Give an example
-```
+Windows users have to use PowerShell and run it using `$env:NODE_ENV = "test" ; npm run-script test-win`
+
+Tests are written using the [mocha](https://mochajs.org/) and [should](https://github.com/shouldjs/should.js) framework.
 
 ## Style guide
 
 Explain your code style and show how to check it.
-
-## Api Reference
-
-If the api is external, link to api documentation. If not describe your api including authentication methods as well as explaining all the endpoints with their required parameters.
-
-
-## Database
-
-Explaining what database (and version) has been used. Provide download links.
-Documents your database design and schemas, relations etc... 
 
 ## Licensing
 
