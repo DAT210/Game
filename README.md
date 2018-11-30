@@ -54,19 +54,19 @@ You can now connect to the service at localhost:port/"gameservice address set in
 
 ### Built With
 
-Javascript
-NodeJS 11.3.0
-dotenv: 6.1.0
-expressjs: 4.16.3
-minimist: 1.2.0
-mocha: 5.2.0
-nunjucks: 3.1.3
-should: 13.2.3
-socket.io: 2.1.1
-superagent: 3.8.3
-winston: 3.1.0
-winston-daily-rotate-file: 3.4.1
-concurrently: 4.0.1
+Javascript  
+NodeJS 11.3.0  
+dotenv: 6.1.0  
+expressjs: 4.16.3  
+minimist: 1.2.0  
+mocha: 5.2.0  
+nunjucks: 3.1.3  
+should: 13.2.3  
+socket.io: 2.1.1  
+superagent: 3.8.3  
+winston: 3.1.0  
+winston-daily-rotate-file: 3.4.1  
+concurrently: 4.0.1  
 
 ### Prerequisites
 
