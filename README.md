@@ -8,8 +8,6 @@ The game service is used for customers to earn coupons using game tokens that th
 You can run the Game service with Docker or Node.
 
 This service depends on environment variables found in the default.env file.
-Before running you need have them in a environment file named "test.env", "dev.env" or "production.env".
-
 
 Copy and rename the /env/default.env file and fill in your variables.
 The service determines which .env file to use based on your NODE_ENV environment variable.
@@ -46,6 +44,8 @@ node src/app.js
 # it when you set the environment variable
 NODE_ENV=<name> node src/app.js
 ```
+
+If you don't have the reward and user info service running you will need to use the "production" as the value for the "ENVIRONMENT" variable in the .env file. The server will give back a user that can play and has 10 game tokens so that you can test the game when running with "dev" and "test" as value for the "ENVIRONMENT" variable.
 
 You can now connect to the service at localhost:port/"gameservice address set in env file".
 
