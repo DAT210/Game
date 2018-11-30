@@ -1,0 +1,13 @@
+pool:
+  vmImage: 'Ubuntu 16.04'
+
+variables:
+  image: 'game'
+  latestTag: '$(image):latest'
+
+steps:
+- script: |
+    docker build -t $(dockerId).azurecr.io/$(latestTag) --build-arg port=80 .
+    docker login -u $(dockerId) -p $(pswd) $(dockerId).azurecr.io
+    docker push $(dockerId).azurecr.io/payment:latest
+  displayName: 'Build and push Docker image'
