@@ -45,7 +45,7 @@ node src/app.js
 NODE_ENV=<name> node src/app.js
 ```
 
-If you don't have the reward and user info service running you will need to use the "production" as the value for the "ENVIRONMENT" variable in the .env file. The server will give back a user that can play and has 10 game tokens so that you can test the game when running with "dev" and "test" as value for the "ENVIRONMENT" variable.
+If you don't have the reward and user info service running you will need to use the "production" as the value for the "ENVIRONMENT" variable in the .env file. The server will give back a user that can play and has 10 game tokens so that you can test the game when running with "dev" and "test" as value for the "ENVIRONMENT" variable. At the moment the game service has not been tested with the user and reward service. Code has been written to talk to the reward service but haven't been tested
 
 You can now connect to the service at localhost:port/"gameservice address set in env file".
 
