@@ -11,8 +11,8 @@ RUN npm install
 
 COPY ./src ./src
 
-COPY ./env/production.env ./env/
-ENV NODE_ENV production
+COPY ./env/dev.env ./env/
+ENV NODE_ENV dev
 
 EXPOSE $port
 
