@@ -1,0 +1,41 @@
+{% extends "template/template.html" %}
+{% block content %}
+<link rel="stylesheet" href="/css/game.css">
+<script>
+    function getPort(){
+        return {{ Port if Port else 0 }};
+    }
+</script>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script>
+<script src="/js/gameUpdater.js"></script>
+<div id="game">
+    <div id="gameHeader">
+        <div id="userInfo" class="gameHeaderBlock">
+            <p>User id: 213587</p>
+        </div>
+        <div id="gameInfo" class="gameHeaderBlock">
+            <div id="gameTitle"><h1 class="stroke">Memory Game</h1></div>
+            <div id="gameTimeLeft"></div>
+        </div>
+        <div id="PointsInfo" class="gameHeaderBlock">
+            <p id="minPoints"></p>
+            <p id="maxPoints"></p>
+            <p id="currentPoints"></p>
+        </div>
+    </div>
+    <div id="gameMenu">
+        <div id="settingscontainer">
+            <h2>Tokens to use</h2><br>
+            <input type="range" min="0" max="4" value="1" id="tokenSlider"><br>
+        </div>
+        <div id="infocontainer">
+            This will start a game using 1 token. You will have 30 seconds to clear out a board with a size of 4. After the game has ended you will be rewarded with a discount coupon worth between 1% and 5% on your next purchase. If you use more then 16 flips you will lose 2%. If you use up 80% of the time you will lose 2%. If you use up all the time you will get the minimum reward. Increasing the amount of tokens you use will increase the boardsize but also increase the reward. Good luck!
+        </div>
+        <div id="btncontainer">
+            <input id="btn_start" type="button" value="Start">
+        </div>
+    </div>
+    <div id="gameFooter"></div>
+</div>
+{% endblock %}
